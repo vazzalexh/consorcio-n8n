@@ -1,0 +1,229 @@
+{
+  "updatedAt": "2026-11-21T01:57:18.000Z",
+  "createdAt": "2026-11-20T18:05:00.415Z",
+  "id": "ConsToolRAG05001",
+  "name": "Consorcio · Tool · RAG",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "6054c9ce-62b1-4e14-8ed9-32bcab124aa9",
+      "name": "[A1] Entrada RAG",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "0174ef2e-72c3-402a-b2ec-c1d2f15e6fa3",
+      "name": "[B1] Recuperar fragmentos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cloud.llamaindex.ai/api/v1/retrieval/retrieve?project_id=06ef26cd-5267-4e56-810f-aaa694403e07",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({index_id:'dec-qgnsi90bin7bzzeslr1tkl5fkzif', query:$json.query, top_k:4, vector_pipeline_weight:0.7, full_text_pipeline_weight:0.3}) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "dRBDmeSlnIwSJsr7",
+          "name": "LlamaCloud API"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "d4b43710-e291-45e7-986a-b1294cd86105",
+      "name": "[B2] Filtrar y formatear",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const gruposSinonimos = { mascotas: ['gato', 'perro', 'mascota', 'animal', 'felino', 'canino'] };\nconst normalize=s=>String(s||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();\nconst roots=s=>[...new Set((normalize(s).match(/[a-z0-9]+/g)||[]).filter(w=>w.length>=4).map(w=>w.slice(0,5)))];\nconst query=$('[A1] Entrada RAG').first().json.query;\nconst consulta=typeof query==='string'?query:JSON.stringify(query||'');\nconst palabras=(normalize(consulta).match(/[a-z0-9]+/g)||[]);\nconst sinonimos=[];\nfor(const grupo of Object.values(gruposSinonimos)){\n const terminos=grupo.map(normalize);\n if(terminos.some(t=>palabras.some(p=>p===t||p===t+'s'||p===t+'es')))sinonimos.push(...terminos);\n}\nconst q=roots(consulta+' '+sinonimos.join(' '));\nconst x=$input.first().json;\nif(!Array.isArray(x.results))throw new Error('Respuesta RAG sin results');\nconst nombres={'dfl-yy0nd3gni48nkodn8r1xevrnljm3':'Reglamento_Interno_Edificio.md','dfl-ze97pjmxpsyz2i0v1gfid0die0ma':'Normativa_Consorcios_CABA_Resumen.md'};\nconst sections=[];\nfor(const r of x.results){\n if(typeof r.score!=='number'||r.score<0.005||typeof r.content!=='string')continue;\n const filename=nombres[r.static_fields?.parsed_directory_file_id]||r.metadata?.file_name||'Fuente no identificada';\n const parts=r.content.split(/(?=^#{2,3}\\s+)/gm).filter(s=>s.trim());\n for(const part of parts){\n  const title=(part.match(/^#{2,3}\\s+(.+)$/m)||[])[1]||'Inicio del documento';\n  const words=new Set(roots(part));const matches=q.filter(w=>words.has(w)).length;\n  sections.push({texto:part.trim().slice(0,1200),fuente:filename+' · '+title.trim(),score:r.score,matches});\n }\n}\nsections.sort((a,b)=>b.matches-a.matches||b.score-a.score);\nconst seen=new Set(),best=[];\nfor(const s of sections){const key=normalize(s.fuente);if(seen.has(key))continue;seen.add(key);best.push({texto:s.texto,fuente:s.fuente,score:s.score});if(best.length===3)break;}\nreturn [{json:{response:best.length?JSON.stringify(best):'SIN_FRAGMENTOS'}}];\n"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "9cd9f475-04d5-4338-ae1b-fc9efea0d881",
+      "name": "[Be1] Avisar falla RAG",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        800,
+        320
+      ],
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "CXXXXXXXXXX"
+        },
+        "text": "=Falla RAG LlamaCloud | traceId: {{ $(' [A1] Entrada RAG'.trim()).first().json.traceId || 'no disponible' }} | {{ $json.error?.message || $json.message || 'Error al recuperar o procesar fragmentos' }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "bE4RqopUN7KMGda1",
+          "name": "Slack account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "73c2d45a-8b1b-49b1-82ce-19987d7303a0",
+      "name": "[Be2] Devolver contingencia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        320
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{response:'ERROR_RAG'}}];"
+      }
+    },
+    {
+      "id": "614532dd-ba8f-4a26-930e-09d5aba060f3",
+      "name": "Nota título RAG",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -800
+      ],
+      "parameters": {
+        "content": "# Consorcio · Tool · RAG · E5\nRecuperación híbrida y filtro de fragmentos.",
+        "height": 160,
+        "width": 500,
+        "color": 3
+      }
+    },
+    {
+      "id": "ff161606-fe5a-4e8c-bfe6-8cbba0df6cd9",
+      "name": "Nota recuperación",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -200
+      ],
+      "parameters": {
+        "content": "## [B] Recuperación LlamaCloud\nTop-K 4, corte 0.005 y tres secciones de hasta 1200 caracteres.\nE5 · RAG por sección con fuentes y contingencia.",
+        "height": 760,
+        "width": 1020,
+        "color": 3
+      }
+    },
+    {
+      "id": "c7eda006-6670-4c2a-804d-a44388d68723",
+      "name": "Nota entrada RAG",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -200
+      ],
+      "parameters": {
+        "content": "## [A] Entrada RAG\nRecibe la consulta y el traceId del Manager.\nE5 · Entrada al subworkflow.",
+        "height": 480,
+        "width": 420,
+        "color": 1
+      }
+    }
+  ],
+  "connections": {
+    "[A1] Entrada RAG": {
+      "main": [
+        [
+          {
+            "node": "[B1] Recuperar fragmentos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B1] Recuperar fragmentos": {
+      "main": [
+        [
+          {
+            "node": "[B2] Filtrar y formatear",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Be1] Avisar falla RAG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B2] Filtrar y formatear": {
+      "main": [
+        [],
+        [
+          {
+            "node": "[Be1] Avisar falla RAG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Be1] Avisar falla RAG": {
+      "main": [
+        [
+          {
+            "node": "[Be2] Devolver contingencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "executionTimeout": 60,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "versionId": "c4966816-3976-4a58-a32e-6c2aec3c96c3",
+  "activeVersionId": "c4966816-3976-4a58-a32e-6c2aec3c96c3",
+  "versionCounter": 5,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

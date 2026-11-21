@@ -16,3 +16,14 @@ El Manager recuerda a cada vecino entre conversaciones. La memoria vive en Airta
 | 93 | Vecino conocido | Recupera el contexto anterior |
 | 98 | Más de 5 mensajes | Genera y guarda el resumen |
 | 99 | Conversación posterior | Usa el resumen guardado |
+
+## Workflows
+
+- No hay archivos de workflow propios en esta carpeta.
+- [Manager completo](../final/workflows/consorcio_manager.json).
+
+## Capturas
+
+- ![manager bloque M resumen](capturas/manager_bloque_M_resumen.png) — manager bloque M resumen.
+- ![nodo C2 validar lectura](capturas/nodo_C2_validar_lectura.png) — nodo C2 validar lectura.
+- ![nodo C3 usuario conocido](capturas/nodo_C3_usuario_conocido.png) — nodo C3 usuario conocido.

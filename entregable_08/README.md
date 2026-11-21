@@ -32,3 +32,13 @@ Reglas en código después del modelo: amenazas, violencia o temas legales siemp
 | B · gpt-oss-120b | 3,4 / 5 | 60 % | USD 0,49 | 3,83 s |
 
 Recomendación: agente con 20b y juez con 120b. El 20b falla de forma segura ("No sé.") y el juez lo corrige; el 120b falla inventando.
+
+## Workflows
+
+- [consorcio_qa_ab.json](workflows/consorcio_qa_ab.json)
+- [consorcio_supervisor_juez.json](workflows/consorcio_supervisor_juez.json)
+- [Manager completo](../final/workflows/consorcio_manager.json).
+
+## Capturas
+
+- Pendientes.

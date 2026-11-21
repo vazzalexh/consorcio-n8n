@@ -1,0 +1,740 @@
+{
+  "updatedAt": "2026-11-20T22:05:18.000Z",
+  "createdAt": "2026-11-20T19:52:18.622Z",
+  "id": "ConsVozE60000001",
+  "name": "Consorcio · Voz",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "1347bb71-3627-4bea-a0ab-f1e8e7a86954",
+      "name": "[A1] Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "traceId"
+            },
+            {
+              "name": "operacion"
+            },
+            {
+              "name": "chat_id"
+            },
+            {
+              "name": "file_id"
+            },
+            {
+              "name": "texto"
+            },
+            {
+              "name": "caption"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "47617663-a49f-4be9-90de-68634fed772a",
+      "name": "[A2] Operación",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        300,
+        0
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operacion }}",
+                    "rightValue": "transcribir",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "99011047-b833-4c0e-bce1-96b934729bc0"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "transcribir"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operacion }}",
+                    "rightValue": "hablar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "077c4bf0-9732-4d94-bdb0-1b6bd89f6ce1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hablar"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "e2cd5852-117e-42b9-9f17-ef34161d9812",
+      "name": "[B1] Descargar audio",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        -180
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "get",
+        "fileId": "={{ $json.file_id }}",
+        "download": true,
+        "binaryPropertyName": "data"
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "ZwkMw037HwGg7NZX",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "fc7dfb3e-03a8-42d3-95c4-71594d87711d",
+      "name": "[B2] Preparar audio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        -180
+      ],
+      "parameters": {
+        "jsCode": "const b=$input.first().binary?.data;if(!b)throw new Error('Audio ausente');return [{json:{},binary:{data:{...b,fileName:'audio.ogg',mimeType:'audio/ogg'}}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "b0930f9a-4993-4108-b3ee-de721fb69cbb",
+      "name": "[B3] Whisper (Groq)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        -180
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "model",
+              "value": "whisper-large-v3"
+            },
+            {
+              "name": "language",
+              "value": "es"
+            },
+            {
+              "name": "response_format",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "credentials": {
+        "groqApi": {
+          "id": "ZiPVOilNC7sayGwe",
+          "name": "Groq account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "82323aa5-df72-42bc-a679-cb4dbc462951",
+      "name": "[B4] Descartar audio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        -180
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{texto:String($json.text||'').trim()}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "4e42305a-42df-44ae-b0a5-b3e8f000beab",
+      "name": "[B5] ¿Transcripción válida?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1800,
+        -180
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fdf5ab4f-5047-4ed7-ac21-d8f5c722d931",
+              "leftValue": "={{ (() => {const s=String($json.texto||'').trim();const n=s.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\\s+/g,' ').trim();return n.replace(/\\s/g,'').length>=3&&!/^(eh+|ah+|mm+|uh+|gracias por ver el video|subtitulos (?:realizados )?por la comunidad de amara org)$/.test(n);})() }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "47305f7a-00b8-4cda-9f6e-03fb4d4ee1c7",
+      "name": "[B6] Resultado transcripción",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        -270
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{status:'success',worker:'voz',traceId:$('[A1] Entrada').first().json.traceId,data:{texto:$json.texto,mensaje:''}}}];"
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "c0f14a1e-b5e0-4512-9521-684634acc130",
+      "name": "[B7] Audio ininteligible",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        -90
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{status:'error',worker:'voz',traceId:$('[A1] Entrada').first().json.traceId,data:{texto:'',mensaje:'No pude entender el audio, ¿podés escribirlo o grabarlo de nuevo?'}}}];"
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "9b4d21c8-1580-4a31-a52b-c3120f06fa2c",
+      "name": "[C1] Recortar a 200",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        180
+      ],
+      "parameters": {
+        "jsCode": "let s=String($json.texto||'').replace(/^\\s*Fuente:.*$/gim,'').replace(/https?:\\/\\/\\S+|www\\.\\S+/gi,'').replace(/\\([^)]*(?:art[ií]culo|secci[oó]n|fuente|reglamento|\\.md)[^)]*\\)/gi,'').replace(/[\\p{Extended_Pictographic}\\uFE0F\\u200D]/gu,'').replace(/[#*•▪◦]/g,'').replace(/^\\s*[-–—]\\s+/gm,'').replace(/\\s+/g,' ').trim();if(s.length>200){let cut=s.slice(0,201);let p=cut.lastIndexOf('. ');if(p>=40){s=cut.slice(0,p+1).trim();}else{p=cut.lastIndexOf(' ');s=cut.slice(0,p>0?p:200).trim();}}return [{json:{texto:s}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "3a293044-ab93-45a0-a384-43b408c2585a",
+      "name": "[C2] ElevenLabs",
+      "type": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
+      "typeVersion": 1,
+      "position": [
+        900,
+        180
+      ],
+      "parameters": {
+        "resource": "speech",
+        "operation": "textToSpeech",
+        "voice": {
+          "__rl": true,
+          "mode": "id",
+          "value": "hpp4J3VqNfWAUOO0d1Us"
+        },
+        "text": "={{ $json.texto }}",
+        "additionalOptions": {
+          "model": {
+            "__rl": true,
+            "mode": "id",
+            "value": "eleven_multilingual_v2"
+          },
+          "outputFormat": "mp3_44100_128",
+          "voiceSettings": "{\"stability\":0.6,\"similarity_boost\":0.75}"
+        }
+      },
+      "credentials": {
+        "elevenLabsApi": {
+          "id": "PXPqDh2DxzXKxeGB",
+          "name": "ElevenLabs node"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "72d38b6a-0d79-4718-859a-2fa150a2e96d",
+      "name": "[C3] Enviar audio",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        180
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "sendAudio",
+        "chatId": "={{ $('[A1] Entrada').first().json.chat_id }}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "additionalFields": {
+          "caption": "={{ String($('[A1] Entrada').first().json.caption || '').slice(0,1024).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }}",
+          "parse_mode": "HTML",
+          "appXXXXXXXXXXXXXX": false
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "ZwkMw037HwGg7NZX",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "daef33ca-6679-4008-ad3a-0f3538b74d4b",
+      "name": "[C4] Descartar audio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        180
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{status:'success',worker:'voz',traceId:$('[A1] Entrada').first().json.traceId,data:{mensaje:''}}}];"
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "b2623410-c7cb-4e93-82a0-675bc1b3ca9b",
+      "name": "[Xe1] Armar error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        520
+      ],
+      "parameters": {
+        "jsCode": "const x=$json.error||$json;const t=String((typeof x==='string'?x:(x.message||x.description||x.error||$json.message))||'Error de voz');const e=$prevNode.name;return [{json:{status:'error',worker:'voz',traceId:$('[A1] Entrada').first().json.traceId,data:{mensaje:e.includes('ElevenLabs')&&/quota|cuota|401|402|429|unauthorized|credit/i.test(JSON.stringify(x))?'Cuota de ElevenLabs agotada o credencial inválida':t.slice(0,250)},nodo:e}}];"
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "b83e75f3-9a9c-45c0-9c52-6aed1575f86b",
+      "name": "[Xe2] Avisar errores",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1200,
+        520
+      ],
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "CXXXXXXXXXX"
+        },
+        "text": "=traceId: {{ $json.traceId }} | Voz | {{ $json.nodo }} | {{ $json.data.mensaje }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "bE4RqopUN7KMGda1",
+          "name": "Slack account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "7d3b5aaf-7255-478c-989a-6e2ee5fbfcde",
+      "name": "[Xe3] Contingencia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        520
+      ],
+      "parameters": {
+        "jsCode": "const j=$('[Xe1] Armar error').first().json;return [{json:{status:'error',worker:'voz',traceId:j.traceId,data:{mensaje:j.data.mensaje}}}];"
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "57a07d3f-43ac-45eb-8df5-d5003ee2bf9c",
+      "name": "Nota título",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -740
+      ],
+      "parameters": {
+        "content": "# Consorcio · Voz\nEntregable 6: transcripción y respuesta en audio.",
+        "height": 160,
+        "width": 650,
+        "color": 7
+      }
+    },
+    {
+      "id": "2cbd0e13-32a2-42e1-936d-365f7c6d8ff2",
+      "name": "Nota [A] Operación",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -300
+      ],
+      "parameters": {
+        "content": "## [A] Operación\nRecibe los campos mínimos y selecciona transcripción o voz.",
+        "height": 540,
+        "width": 600,
+        "color": 1
+      }
+    },
+    {
+      "id": "bbfd5ce2-474d-41ad-bc06-fa5e0a032035",
+      "name": "Nota [B] Transcripción",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -450
+      ],
+      "parameters": {
+        "content": "## [B] Transcripción\nDescarga el audio, usa Whisper y descarta el binario.\nValida que el resultado sea inteligible.",
+        "height": 500,
+        "width": 1950,
+        "color": 3
+      }
+    },
+    {
+      "id": "156fb085-4cb4-4209-879b-ed9956011943",
+      "name": "Nota [C] Voz",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        520,
+        60
+      ],
+      "parameters": {
+        "content": "## [C] Respuesta en voz\nLimpia el texto, sintetiza y envía el audio por Telegram.",
+        "height": 350,
+        "width": 1300,
+        "color": 7
+      }
+    },
+    {
+      "id": "f18fb590-c667-4616-906d-8543f237138d",
+      "name": "Nota [X] Errores",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        800,
+        400
+      ],
+      "parameters": {
+        "content": "## [X] Errores\nAvisa por Slack sin adjuntar audio y devuelve contingencia.",
+        "height": 260,
+        "width": 1100,
+        "color": 6
+      }
+    },
+    {
+      "id": "ccd0d577-0b75-4a39-bc94-3bcfbde5f082",
+      "name": "Nota compliance",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        700
+      ],
+      "parameters": {
+        "content": "## Compliance\nLos audios no se almacenan: este workflow no guarda ejecuciones y descarta cada binario después de usarlo.",
+        "height": 180,
+        "width": 700,
+        "color": 6
+      }
+    }
+  ],
+  "connections": {
+    "[A1] Entrada": {
+      "main": [
+        [
+          {
+            "node": "[A2] Operación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[A2] Operación": {
+      "main": [
+        [
+          {
+            "node": "[B1] Descargar audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[C1] Recortar a 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B1] Descargar audio": {
+      "main": [
+        [
+          {
+            "node": "[B2] Preparar audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Xe1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B2] Preparar audio": {
+      "main": [
+        [
+          {
+            "node": "[B3] Whisper (Groq)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Xe1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B3] Whisper (Groq)": {
+      "main": [
+        [
+          {
+            "node": "[B4] Descartar audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Xe1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B4] Descartar audio": {
+      "main": [
+        [
+          {
+            "node": "[B5] ¿Transcripción válida?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Xe1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[C1] Recortar a 200": {
+      "main": [
+        [
+          {
+            "node": "[C2] ElevenLabs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Xe1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[C2] ElevenLabs": {
+      "main": [
+        [
+          {
+            "node": "[C3] Enviar audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Xe1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[C3] Enviar audio": {
+      "main": [
+        [
+          {
+            "node": "[C4] Descartar audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Xe1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B5] ¿Transcripción válida?": {
+      "main": [
+        [
+          {
+            "node": "[B6] Resultado transcripción",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[B7] Audio ininteligible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Xe1] Armar error": {
+      "main": [
+        [
+          {
+            "node": "[Xe2] Avisar errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Xe2] Avisar errores": {
+      "main": [
+        [
+          {
+            "node": "[Xe3] Contingencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "executionTimeout": 120,
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "versionId": "6d5b7237-c591-45f2-9315-2e4318f16bb1",
+  "activeVersionId": "6d5b7237-c591-45f2-9315-2e4318f16bb1",
+  "versionCounter": 5,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

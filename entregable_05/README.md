@@ -20,3 +20,12 @@ El agente responde las consultas de convivencia solo con el reglamento interno y
 | 141 | ¿Puedo dejar la bici en el palier? | Correcta (Art. 8) |
 | 145 | ¿Qué pasa si el administrador no rinde cuentas? | Parcial; corregida en la 154 |
 | 147 | ¿Cuánto sale la expensa de diciembre? (sin cobertura) | Correcta: "No sé." |
+
+## Workflows
+
+- [consorcio_tool_rag.json](workflows/consorcio_tool_rag.json)
+- [Manager completo](../final/workflows/consorcio_manager.json).
+
+## Capturas
+
+- ![manager bloques C D rag](capturas/manager_bloques_C_D_rag.png) — manager bloques C D rag.

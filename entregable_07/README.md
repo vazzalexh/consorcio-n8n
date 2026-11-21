@@ -5,3 +5,11 @@ Documento de negocio: cómo se administra hoy el consorcio sin el asistente (lí
 ## Archivos
 
 - `PreEntrega_Modulo7_Alexis_Vazquez.pdf`: documento entregado.
+
+## Workflows
+
+- No hay archivos de workflow propios en esta carpeta.
+
+## Capturas
+
+- Pendientes.

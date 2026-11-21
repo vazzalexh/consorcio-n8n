@@ -16,3 +16,14 @@ El agente pasa a ser un **Manager** que clasifica la intención del vecino y del
 | 60, 66 | Reclamo y reserva | Clasificación y delegación correctas |
 | 70 | Falla del worker de reclamos | Carril de error: aviso a Slack y contingencia |
 | 71 | Reserva que esperó 35 minutos la aprobación | Registrada al aprobarse, sin vencimiento |
+
+## Workflows
+
+- [consorcio_reclamos.json](workflows/consorcio_reclamos.json)
+- [consorcio_reservas.json](workflows/consorcio_reservas.json)
+- [Manager completo](../final/workflows/consorcio_manager.json).
+
+## Capturas
+
+- ![captura manager 02e](capturas/captura_manager_02e.png) — captura manager 02e.
+- ![manager bloques F H](capturas/manager_bloques_F_H.png) — manager bloques F H.

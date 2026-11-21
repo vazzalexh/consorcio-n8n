@@ -12,3 +12,11 @@ Primer agente del consorcio en n8n: un Tools Agent sobre Groq que recibe el mens
 | Ejecución | Caso | Resultado |
 |---|---|---|
 | 35 | Consulta de un vecino registrado | Respuesta del agente por el canal |
+
+## Workflows
+
+- [checkpoint1_Alexis_Vazquez.json](workflows/checkpoint1_Alexis_Vazquez.json)
+
+## Capturas
+
+- Pendientes.

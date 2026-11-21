@@ -1,0 +1,967 @@
+{
+  "updatedAt": "2026-11-19T02:33:33.000Z",
+  "createdAt": "2026-11-18T17:08:00.837Z",
+  "id": "ConsAirReseM2001",
+  "name": "Consorcio Airtable M2 · reservas",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "ac462669-d442-48c9-bb22-531eeaca1ec1",
+      "name": "[A1] Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "traceId"
+            },
+            {
+              "name": "evento"
+            },
+            {
+              "name": "operacion"
+            },
+            {
+              "name": "inicio"
+            },
+            {
+              "name": "fin"
+            },
+            {
+              "name": "usuario"
+            },
+            {
+              "name": "unidad"
+            },
+            {
+              "name": "aprobado_por"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2ef6eefa-2f43-4a46-8288-20ce3ed7d92b",
+      "name": "[A2] Validar formato",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const r=$json; const re=/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}$/; function valid(s){if(typeof s!=='string'||!re.test(s))return false; const [y,m,d,h,mi]=s.match(/\\d+/g).map(Number); const t=new Date(Date.UTC(y,m-1,d,h,mi));return y>=1000&&t.getUTCFullYear()===y&&t.getUTCMonth()===m-1&&t.getUTCDate()===d&&t.getUTCHours()===h&&t.getUTCMinutes()===mi;} const ok=valid(r.inicio)&&valid(r.fin)&&r.inicio.slice(0,10)===r.fin.slice(0,10)&&r.inicio<r.fin&&Date.parse(r.inicio+'-03:00')>Date.now();return [{json:{valido:ok}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "bac4d69f-718f-466b-a43a-395549b928ea",
+      "name": "[A3] ¿Formato válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        600,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valido === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "80e266a1-e44b-4c7e-be4e-05ca17cf5d2d",
+      "name": "[A4] Formato inválido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json; return [{json:{status:'error',worker:'reservas',traceId:r.traceId,data:{mensaje:'Necesito fecha, hora de inicio y hora de fin válidas, por ejemplo: 2 de diciembre de 14 a 16.'}}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "23bb9214-bfcf-4efc-8223-c41a4f3c9a44",
+      "name": "[B1] Consultar reservas del día",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "appXXXXXXXXXXXXXX"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "tblXXXXXXXXXXXXXX"
+        },
+        "filterByFormula": "={{ \"AND(IS_SAME({fecha}, '\" + $('[A1] Entrada').first().json.inicio.slice(0,10) + \"', 'day'), {estado} != 'Cancelada')\" }}",
+        "options": {}
+      },
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "N55OBGqBwWG2bMBt",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "a97636ca-a8b4-4768-a238-f9a328286fda",
+      "name": "[B2] Comprobar solapamiento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json; const all=$input.all().map(x=>x.json); const hh=/^([01]\\d|2[0-3]):[0-5]\\d$/; let conflicto=null; for(const row of all){ if(Object.keys(row).length===0)continue; if(!row.id||!row.fields||!hh.test(row.fields.hora_inicio||'')||!hh.test(row.fields.hora_fin||'')||row.fields.hora_inicio>=row.fields.hora_fin)throw Error('Reserva del día mal formada'); const f=row.fields; const mismo=r.operacion==='registrar'&&r.evento&&f.id_reserva===r.evento&&f.fecha===r.inicio.slice(0,10)&&f.hora_inicio===r.inicio.slice(11,16)&&f.hora_fin===r.fin.slice(11,16)&&Array.isArray(f.usuario)&&f.usuario.includes(r.usuario)&&Array.isArray(f.unidad)&&f.unidad.includes(r.unidad); if(!mismo&&f.hora_inicio<r.fin.slice(11,16)&&f.hora_fin>r.inicio.slice(11,16)){conflicto={inicio:f.hora_inicio,fin:f.hora_fin};break;} } return [{json:{disponible:!conflicto,conflicto}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "d330bb01-2539-45da-9b90-45beb5cd5dea",
+      "name": "[B3] ¿Disponible?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1700,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.disponible === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "29c3b5b0-ef2a-4159-8a45-07b5afe6d04c",
+      "name": "[B4] Sin disponibilidad",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json; return [{json:{status:'error',worker:'reservas',traceId:r.traceId,data:{mensaje:'Ese horario ya está ocupado, probá con otro.',conflicto:$json.conflicto}}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "22db5def-fe18-441c-ad86-1edf91ed07de",
+      "name": "[C1] Operación",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2200,
+        0
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('[A1] Entrada').first().json.operacion }}",
+                    "rightValue": "verificar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "verificar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('[A1] Entrada').first().json.operacion }}",
+                    "rightValue": "registrar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "registrar"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      }
+    },
+    {
+      "id": "f888d99d-d4e5-46a1-b438-b4a55c5eb359",
+      "name": "[C2] Libre para aprobar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2500,
+        -180
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json;return [{json:{status:'pending',worker:'reservas',traceId:r.traceId,data:{mensaje:'El horario está libre. Lo enviamos a Administración para confirmar.',inicio:r.inicio,fin:r.fin}}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "de7939ba-b472-4a10-a5ab-e02cf8bc9e69",
+      "name": "[D1] Buscar reserva existente",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        2700,
+        0
+      ],
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "appXXXXXXXXXXXXXX"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "tblXXXXXXXXXXXXXX"
+        },
+        "filterByFormula": "={{ '{id_reserva} = ' + JSON.stringify(String($('[A1] Entrada').first().json.evento ?? '')) }}",
+        "options": {}
+      },
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "N55OBGqBwWG2bMBt",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "3cf27802-66c6-46f5-9c11-c6310eb28785",
+      "name": "[D1a] Validar búsqueda",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3000,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json; if(!['evento','usuario','unidad','aprobado_por'].every(k=>typeof r[k]==='string'&&r[k].trim())) throw Error('Faltan datos de registro o aprobación'); const a=$input.all().map(i=>i.json); if(a.length===1&&Object.keys(a[0]).length===0)return [{json:{}}]; if(a.length!==1||!a[0].id||!a[0].fields||a[0].fields.id_reserva!==r.evento)throw Error('Resultado de búsqueda inválido o duplicado');const f=a[0].fields;if(f.fecha!==r.inicio.slice(0,10)||f.hora_inicio!==r.inicio.slice(11,16)||f.hora_fin!==r.fin.slice(11,16)||!f.usuario?.includes(r.usuario)||!f.unidad?.includes(r.unidad)||f.estado!=='Confirmada')throw Error('El evento ya pertenece a otra reserva');return [{json:a[0]}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "6b316ba9-3d35-4815-a206-eb7c699eee22",
+      "name": "[D2] ¿Ya existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3300,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !!$json.id }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "0a6a2c22-3a90-4507-8f85-898ddbb44117",
+      "name": "[D2a] Resultado existente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        -180
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json;const f=$json.fields;const [y,m,d]=f.fecha.split('-');return [{json:{status:'success',worker:'reservas',traceId:r.traceId,data:{id_reserva:f.id_reserva,mensaje:`Tu reserva del SUM quedó confirmada para el ${d}/${m}/${y} de ${f.hora_inicio} a ${f.hora_fin}.`}}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "629f96b5-cf95-4f5a-9a01-28168c795c7d",
+      "name": "[D3] Crear reserva",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        3600,
+        180
+      ],
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "appXXXXXXXXXXXXXX"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "tblXXXXXXXXXXXXXX"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id_reserva": "={{ $('[A1] Entrada').first().json.evento }}",
+            "unidad": "={{ [$('[A1] Entrada').first().json.unidad] }}",
+            "usuario": "={{ [$('[A1] Entrada').first().json.usuario] }}",
+            "fecha": "={{ $('[A1] Entrada').first().json.inicio.slice(0,10) }}",
+            "hora_inicio": "={{ $('[A1] Entrada').first().json.inicio.slice(11,16) }}",
+            "hora_fin": "={{ $('[A1] Entrada').first().json.fin.slice(11,16) }}",
+            "estado": "Confirmada",
+            "aprobado_por": "={{ $('[A1] Entrada').first().json.aprobado_por }}",
+            "fecha_solicitud": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id_reserva",
+              "displayName": "id_reserva",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "unidad",
+              "displayName": "unidad",
+              "type": "array",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "usuario",
+              "displayName": "usuario",
+              "type": "array",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "hora_inicio",
+              "displayName": "hora_inicio",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "hora_fin",
+              "displayName": "hora_fin",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "aprobado_por",
+              "displayName": "aprobado_por",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "fecha_solicitud",
+              "displayName": "fecha_solicitud",
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "display": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "N55OBGqBwWG2bMBt",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "037a352a-39ea-4f8e-b021-39b9e26873a8",
+      "name": "[D4] Resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3900,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json;const [y,m,d]=r.inicio.slice(0,10).split('-');return [{json:{status:'success',worker:'reservas',traceId:r.traceId,data:{id_reserva:r.evento,mensaje:`Tu reserva del SUM quedó confirmada para el ${d}/${m}/${y} de ${r.inicio.slice(11,16)} a ${r.fin.slice(11,16)}.`}}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "db5c0296-48ad-4d93-bdd3-1f142e02a315",
+      "name": "[Ee1] Armar error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        500
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json;const e=typeof $json.error==='string'?$json.error:($json.error?.description??$json.error?.message??$json.message??'Entrada inválida o dato no encontrado');return [{json:{traceId:r.traceId,bloque:'reservas',nodo:$prevNode.name,mensaje:String(e)}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "8f212662-a420-4da0-bd74-c21429872059",
+      "name": "[Ee2] Avisar errores",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1400,
+        500
+      ],
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "CXXXXXXXXXX"
+        },
+        "text": "=Error worker reservas | traceId: {{ $json.traceId }} | nodo: {{ $json.nodo }} | {{ $json.mensaje }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "bE4RqopUN7KMGda1",
+          "name": "Slack account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "f92b7b24-40be-47b6-85aa-65dc4c53ceb5",
+      "name": "[Ee3] Contingencia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        500
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json;return [{json:{status:'error',worker:'reservas',traceId:r.traceId,data:{mensaje:'No pude procesar la reserva. Ya avisamos a Administración.'}}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "bbef9dff-b575-4f1f-af84-7ac3ae5dd160",
+      "name": "Nota Worker Reservas · Entregable 2 · Función 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        -850
+      ],
+      "parameters": {
+        "content": "## Worker Reservas · Entregable 2 · Función 2\nDisponibilidad y registro del SUM.",
+        "width": 750,
+        "height": 180,
+        "color": 7
+      }
+    },
+    {
+      "id": "548cd1d8-304b-4dc9-b57e-9f3a2ab7247c",
+      "name": "Nota [A] Entrada y formato",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        -200
+      ],
+      "parameters": {
+        "content": "## [A] Entrada y formato\nValida fechas futuras y horas del mismo día.",
+        "width": 1100,
+        "height": 550,
+        "color": 1
+      }
+    },
+    {
+      "id": "a51a620f-0c74-4395-ad16-20a0337cc661",
+      "name": "Nota [B] Disponibilidad",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        -200
+      ],
+      "parameters": {
+        "content": "## [B] Disponibilidad\nConsulta y detecta solapamientos.",
+        "width": 1100,
+        "height": 550,
+        "color": 5
+      }
+    },
+    {
+      "id": "1b4f3745-0027-4e45-b140-b6d3758e88e3",
+      "name": "Nota [C] Operación",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2100,
+        -400
+      ],
+      "parameters": {
+        "content": "## [C] Operación\nDistingue verificación y registro.",
+        "width": 500,
+        "height": 750,
+        "color": 5
+      }
+    },
+    {
+      "id": "710480b4-ff4e-4cc3-abf7-e8e995c52775",
+      "name": "Nota [D] Registrar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        -400
+      ],
+      "parameters": {
+        "content": "## [D] Registrar\nEvita duplicados y confirma reservas aprobadas.",
+        "width": 1500,
+        "height": 750,
+        "color": 5
+      }
+    },
+    {
+      "id": "010d2e94-5b89-4c7e-ad4e-0e2ce71d848b",
+      "name": "Nota [E] Errores",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        350
+      ],
+      "parameters": {
+        "content": "## [E] Errores\nAvisa a Administración y devuelve contingencia.",
+        "width": 1100,
+        "height": 350,
+        "color": 6
+      }
+    }
+  ],
+  "connections": {
+    "[A1] Entrada": {
+      "main": [
+        [
+          {
+            "node": "[A2] Validar formato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[A2] Validar formato": {
+      "main": [
+        [
+          {
+            "node": "[A3] ¿Formato válido?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[A3] ¿Formato válido?": {
+      "main": [
+        [
+          {
+            "node": "[B1] Consultar reservas del día",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[A4] Formato inválido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B1] Consultar reservas del día": {
+      "main": [
+        [
+          {
+            "node": "[B2] Comprobar solapamiento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B2] Comprobar solapamiento": {
+      "main": [
+        [
+          {
+            "node": "[B3] ¿Disponible?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B3] ¿Disponible?": {
+      "main": [
+        [
+          {
+            "node": "[C1] Operación",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[B4] Sin disponibilidad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[C1] Operación": {
+      "main": [
+        [
+          {
+            "node": "[C2] Libre para aprobar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[D1] Buscar reserva existente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[D1] Buscar reserva existente": {
+      "main": [
+        [
+          {
+            "node": "[D1a] Validar búsqueda",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[D1a] Validar búsqueda": {
+      "main": [
+        [
+          {
+            "node": "[D2] ¿Ya existe?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[D2] ¿Ya existe?": {
+      "main": [
+        [
+          {
+            "node": "[D2a] Resultado existente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[D3] Crear reserva",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[D3] Crear reserva": {
+      "main": [
+        [
+          {
+            "node": "[D4] Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Ee1] Armar error": {
+      "main": [
+        [
+          {
+            "node": "[Ee2] Avisar errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Ee2] Avisar errores": {
+      "main": [
+        [
+          {
+            "node": "[Ee3] Contingencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[A4] Formato inválido": {
+      "main": [
+        [],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B4] Sin disponibilidad": {
+      "main": [
+        [],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[C2] Libre para aprobar": {
+      "main": [
+        [],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[D2a] Resultado existente": {
+      "main": [
+        [],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[D4] Resultado": {
+      "main": [
+        [],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "executionTimeout": 60,
+    "binaryMode": "separate"
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "versionId": "197a522e-e204-42a6-8e66-ff483fc314cb",
+  "activeVersionId": "197a522e-e204-42a6-8e66-ff483fc314cb",
+  "versionCounter": 9,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

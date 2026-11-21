@@ -1,0 +1,681 @@
+{
+  "updatedAt": "2026-11-21T15:29:52.000Z",
+  "createdAt": "2026-11-21T00:16:48.134Z",
+  "id": "ConsJuezE8000001",
+  "name": "Consorcio · Supervisor · Juez",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "c390fbc6-d419-4c37-a001-6a9a5f96e337",
+      "name": "[A1] Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "f6d70fcd-4231-4ed9-b7d5-cd4b02ad0d89",
+      "name": "[A2] Iniciar medición",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{...$json,_inicio:Date.now()}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "66369e86-ff62-45e5-8c05-b92f6ffaa374",
+      "name": "[B1] Juez",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        600,
+        0
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ '<consulta>\\n'+$json.query+'\\n</consulta>\\n<contexto>\\n'+$json.contexto+'\\n</contexto>\\n<intencion>'+($json.intencion||'')+'</intencion>\\n<datos_clasificacion>'+JSON.stringify($json.datos_clasificacion||{})+'</datos_clasificacion>\\n<respuesta>\\n'+$json.respuesta_propuesta+'\\n</respuesta>' }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "type": "SystemMessagePromptTemplate",
+              "message": "Sos el supervisor de calidad del asistente de un consorcio. Evaluás la respuesta propuesta SOLO contra la consulta del vecino y el contexto (fragmentos del reglamento con su fuente, resumen de memoria y fecha actual). No uses conocimiento externo. Criterios: (1) Exactitud: cada afirmación debe estar en el contexto; un dato inventado es alucinacion. (2) Si el dato no está en el contexto, la respuesta correcta empieza con 'No sé.' y ofrece derivar. (3) Clasificación: la intención debe coincidir con lo que el vecino pide; un relato o una pregunta NO es un reclamo si el vecino no pide registrarlo; un riesgo actual (gas, fuego, agua sobre electricidad, personas atrapadas) debe ser critico=true; para reservas, revisá que inicio y fin correspondan a la fecha relativa pedida. (4) Tono: español rioplatense con voseo, sin tú ni usted. Veredicto: APROBADO solo si exactitud ≥ 4 y no hay datos inventados ni errores de clasificación. CORREGIR si se puede mejorar usando el mismo contexto (escribí en critica qué cambiar, en una o dos frases accionables). ESCALAR ante riesgo legal, dinero o pagos puntuales, amenazas o violencia, conflicto entre vecinos, emergencia, o contexto insuficiente para responder bien. Devolvé solo el JSON pedido. Si la respuesta es 'No sé.' pero el contexto contiene información que responde la consulta, el veredicto es CORREGIR con categoria dato_faltante y exactitud ≤ 2. 'No sé.' merece APROBADO solo si el contexto realmente no cubre el tema. Si intencion es reclamo o reserva_sum, el mensaje final al vecino lo redacta después el sistema: evaluá SOLO la clasificación (intencion, categoria, prioridad, critico, inicio y fin según la fecha actual). No penalices que la respuesta diga que se registra, se envía a Administración o se deriva, ni exijas fragmentos del reglamento. Evaluá la clasificación solo con el mensaje actual."
+            }
+          ]
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "55a4425e-7cce-4b46-99a5-2b3b4f8fd612",
+      "name": "[B2] Modelo juez",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        500,
+        220
+      ],
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {
+          "temperature": 0,
+          "maxTokensToSample": 1500
+        }
+      },
+      "credentials": {
+        "groqApi": {
+          "id": "ZiPVOilNC7sayGwe",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "id": "acc2b039-cf16-4a0f-9550-776ded3b75fc",
+      "name": "[B3] Esquema del veredicto",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        750,
+        220
+      ],
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\": \"object\", \"additionalProperties\": false, \"properties\": {\"exactitud_factual\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 5}, \"estado_veredicto\": {\"type\": \"string\", \"enum\": [\"APROBADO\", \"CORREGIR\", \"ESCALAR\"]}, \"critica\": {\"type\": \"string\", \"maxLength\": 300}, \"categoria_error\": {\"type\": \"string\", \"enum\": [\"ninguno\", \"alucinacion\", \"fuera_de_alcance\", \"dato_faltante\", \"clasificacion\", \"tono\", \"formato\", \"riesgo_legal_o_dinero\"]}}, \"required\": [\"exactitud_factual\", \"estado_veredicto\", \"critica\", \"categoria_error\"]}"
+      }
+    },
+    {
+      "id": "a075bae2-fde0-4b7e-898b-1c711139fcc6",
+      "name": "[Be1] Veredicto por falla",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        420
+      ],
+      "parameters": {
+        "jsCode": "const msg=String($json.error?.message||$json.error||'Error desconocido'); return [{json:{output:{exactitud_factual:1,estado_veredicto:'ESCALAR',critica:('Falla del juez: '+msg).slice(0,300),categoria_error:'riesgo_legal_o_dinero'},error_juez:msg}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "CXXXXXXXXXX"
+        },
+        "text": "={{ 'Juez E8 | traceId: '+$('[A1] Entrada').first().json.traceId+' | error: '+$json.error_juez }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "f8dbc7fb-1a65-4b1e-bc86-1320e6f4d17e",
+      "name": "[Be2] Avisar error del juez",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        900,
+        420
+      ],
+      "webhookId": "8089fb97-55f8-49bf-96de-7499335606db",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "slackApi": {
+          "id": "bE4RqopUN7KMGda1",
+          "name": "Slack account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "773c8342-10d1-442f-8336-a9e105157b01",
+      "name": "[C1] Reglas duras",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const i=$('[A2] Iniciar medición').first().json;const v=$json.output||$json;let estado=v.estado_veredicto,score=Number(v.exactitud_factual),critica=String(v.critica||''),categoria=v.categoria_error;const intento=Number(i.intento||0);const tramite=['reclamo','reserva_sum'].includes(i.intencion);\nif(!['APROBADO','CORREGIR','ESCALAR'].includes(estado)||!Number.isInteger(score)||score<1||score>5)throw new Error('Veredicto inválido');\nif(estado==='APROBADO'&&score<4)estado='CORREGIR';\nif(tramite&&categoria==='alucinacion'&&estado==='APROBADO')estado='CORREGIR';\nif(intento>=2&&estado==='CORREGIR')estado='ESCALAR';\nif(/^\\s*no\\s+se\\b/i.test(String(i.respuesta_propuesta||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,''))&&estado==='APROBADO'&&score===5)score=4;\nconst consulta=String(i.query||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();\nconst raices=[['amenaz','amenaza',false],['agred','agresión',false],['golpe','golpes',false],['violen','violencia',false],['arma','arma',false],['acos','acoso',false],['denunci','denuncia',false],['abogad','abogado',false],['juicio','juicio',false],['demand','demanda',false],['polici','policía',false],['gas','gas',true],['incendi','incendio',true],['humo','humo',true],['inund','inundación',true],['electrocut','electrocución',true]];\nconst borde=String.fromCharCode(92)+'b';const riesgos=raices.filter(([raiz])=>{const patron=raiz==='gas'?borde+'gas'+borde:raiz==='arma'?borde+'armas?'+borde:borde+raiz;return new RegExp(patron).test(consulta)});const riesgo=riesgos.find(([, ,emergencia])=>!emergencia||i.intencion!=='reclamo');if(riesgo){estado='ESCALAR';categoria='riesgo_legal_o_dinero';critica='Escalamiento obligatorio: '+riesgo[1]}\nif(tramite&&!riesgo){\n estado='APROBADO';\n if($json.error_juez){score=1;categoria='formato';critica='Observación (no bloquea): Falla del juez: '+String($json.error_juez)+' · pasa a la aprobación humana del worker';}\n else {score=Number(v.exactitud_factual);categoria=v.categoria_error;critica='Observación (no bloquea): '+String(v.critica||'');}\n}\nconst ti=Math.ceil((JSON.stringify(i).length+\"Sos el supervisor de calidad del asistente de un consorcio. Evaluás la respuesta propuesta SOLO contra la consulta del vecino y el contexto (fragmentos del reglamento con su fuente, resumen de memoria y fecha actual). No uses conocimiento externo. Criterios: (1) Exactitud: cada afirmación debe estar en el contexto; un dato inventado es alucinacion. (2) Si el dato no está en el contexto, la respuesta correcta empieza con 'No sé.' y ofrece derivar. (3) Clasificación: la intención debe coincidir con lo que el vecino pide; un relato o una pregunta NO es un reclamo si el vecino no pide registrarlo; un riesgo actual (gas, fuego, agua sobre electricidad, personas atrapadas) debe ser critico=true; para reservas, revisá que inicio y fin correspondan a la fecha relativa pedida. (4) Tono: español rioplatense con voseo, sin tú ni usted. Veredicto: APROBADO solo si exactitud ≥ 4 y no hay datos inventados ni errores de clasificación. CORREGIR si se puede mejorar usando el mismo contexto (escribí en critica qué cambiar, en una o dos frases accionables). ESCALAR ante riesgo legal, dinero o pagos puntuales, amenazas o violencia, conflicto entre vecinos, emergencia, o contexto insuficiente para responder bien. Devolvé solo el JSON pedido. Si la respuesta es 'No sé.' pero el contexto contiene información que responde la consulta, el veredicto es CORREGIR con categoria dato_faltante y exactitud ≤ 2. 'No sé.' merece APROBADO solo si el contexto realmente no cubre el tema. Si intencion es reclamo o reserva_sum, el mensaje final al vecino lo redacta después el sistema: evaluá SOLO la clasificación (intencion, categoria, prioridad, critico, inicio y fin según la fecha actual). No penalices que la respuesta diga que se registra, se envía a Administración o se deriva, ni exijas fragmentos del reglamento. Evaluá la clasificación solo con el mensaje actual.\".length)/4),to=Math.ceil(JSON.stringify(v).length/4);return [{json:{traceId:i.traceId,origen:i.origen,arquitectura:i.arquitectura,pregunta:i.query,respuesta:i.respuesta_propuesta,exactitud:score,veredicto:estado,critica,categoria_error:categoria,intento,tokens_entrada:ti,tokens_salida:to,costo_usd:Number(((ti*.15+to*.60)/1e6).toFixed(6)),latencia_ms:Date.now()-i._inicio,fecha:new Date().toISOString()}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "appXXXXXXXXXXXXXX"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "tblXXXXXXXXXXXXXX"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "traceId": "={{ $json.traceId }}",
+            "origen": "={{ $json.origen }}",
+            "arquitectura": "={{ $json.arquitectura }}",
+            "pregunta": "={{ $json.pregunta }}",
+            "respuesta": "={{ $json.respuesta }}",
+            "exactitud": "={{ $json.exactitud }}",
+            "veredicto": "={{ $json.veredicto }}",
+            "critica": "={{ $json.critica }}",
+            "categoria_error": "={{ $json.categoria_error }}",
+            "intento": "={{ $json.intento }}",
+            "tokens_entrada": "={{ $json.tokens_entrada }}",
+            "tokens_salida": "={{ $json.tokens_salida }}",
+            "costo_usd": "={{ $json.costo_usd }}",
+            "latencia_ms": "={{ $json.latencia_ms }}",
+            "fecha": "={{ $json.fecha }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "traceId",
+              "displayName": "traceId",
+              "type": "string"
+            },
+            {
+              "id": "origen",
+              "displayName": "origen",
+              "type": "string"
+            },
+            {
+              "id": "arquitectura",
+              "displayName": "arquitectura",
+              "type": "string"
+            },
+            {
+              "id": "pregunta",
+              "displayName": "pregunta",
+              "type": "string"
+            },
+            {
+              "id": "respuesta",
+              "displayName": "respuesta",
+              "type": "string"
+            },
+            {
+              "id": "exactitud",
+              "displayName": "exactitud",
+              "type": "number"
+            },
+            {
+              "id": "veredicto",
+              "displayName": "veredicto",
+              "type": "string"
+            },
+            {
+              "id": "critica",
+              "displayName": "critica",
+              "type": "string"
+            },
+            {
+              "id": "categoria_error",
+              "displayName": "categoria_error",
+              "type": "string"
+            },
+            {
+              "id": "intento",
+              "displayName": "intento",
+              "type": "number"
+            },
+            {
+              "id": "tokens_entrada",
+              "displayName": "tokens_entrada",
+              "type": "number"
+            },
+            {
+              "id": "tokens_salida",
+              "displayName": "tokens_salida",
+              "type": "number"
+            },
+            {
+              "id": "costo_usd",
+              "displayName": "costo_usd",
+              "type": "number"
+            },
+            {
+              "id": "latencia_ms",
+              "displayName": "latencia_ms",
+              "type": "number"
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5fa25814-0760-46b0-baed-86259fabc158",
+      "name": "[D1] Registrar auditoría",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1500,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "N55OBGqBwWG2bMBt",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "CXXXXXXXXXX"
+        },
+        "text": "={{ 'Auditoría E8 | traceId: '+$('[C1] Reglas duras').first().json.traceId+' | error: '+JSON.stringify($json.error||$json) }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "1799d1ac-fd89-4c84-9a3a-276665034a47",
+      "name": "[De1] Avisar error de auditoría",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1800,
+        320
+      ],
+      "webhookId": "8089fb97-55f8-49bf-96de-7499335606db",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "slackApi": {
+          "id": "bE4RqopUN7KMGda1",
+          "name": "Slack account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "ababfaab-5d68-4fd9-8e25-ccc7952976a1",
+      "name": "[D2] Salida",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const j=$('[C1] Reglas duras').first().json; return [{json:{status:'success',worker:'juez',traceId:j.traceId,data:{veredicto:j.veredicto,exactitud:j.exactitud,critica:j.critica,categoria_error:j.categoria_error,intento:j.intento}}}];"
+      }
+    },
+    {
+      "id": "05525d48-bd38-4adb-97be-328ac43bcf54",
+      "name": "Nota Título",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -500
+      ],
+      "parameters": {
+        "content": "# Consorcio · Supervisor · Juez · E8",
+        "height": 180,
+        "width": 350,
+        "color": 3
+      }
+    },
+    {
+      "id": "d77cd802-f328-4c37-9129-c05843224983",
+      "name": "Nota [A]",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -240
+      ],
+      "parameters": {
+        "content": "## [A] Entrada\nRecibe consulta, contexto y respuesta.",
+        "height": 180,
+        "width": 350,
+        "color": 1
+      }
+    },
+    {
+      "id": "5fd45300-937a-484d-a56e-c7ab0899a324",
+      "name": "Nota [B]",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        480,
+        -240
+      ],
+      "parameters": {
+        "content": "## [B] Juez\nEvalúa con esquema JSON; ante falla escala.",
+        "height": 180,
+        "width": 350,
+        "color": 3
+      }
+    },
+    {
+      "id": "fd79ab86-cc71-4a16-b4d5-aa407d82e870",
+      "name": "Nota [C]",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -240
+      ],
+      "parameters": {
+        "content": "## [C] Reglas duras\nAplica umbral y límite de correcciones.",
+        "height": 180,
+        "width": 350,
+        "color": 3
+      }
+    },
+    {
+      "id": "c21a609d-a992-4273-8ef4-9d1832a9d7a4",
+      "name": "Nota [D]",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        -240
+      ],
+      "parameters": {
+        "content": "## [D] Auditoría\nRegistra el veredicto y devuelve el contrato.",
+        "height": 180,
+        "width": 350,
+        "color": 6
+      }
+    },
+    {
+      "id": "a3a66c96-308a-457f-91b2-c9f10927c11a",
+      "name": "[Be3] Recuperar veredicto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        420
+      ],
+      "parameters": {
+        "jsCode": "return [{json:$('[Be1] Veredicto por falla').first().json}];"
+      }
+    },
+    {
+      "id": "7403a3f0-9bf8-4009-8251-fe09a78eae50",
+      "name": "[Ce1] Contingencia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        620
+      ],
+      "parameters": {
+        "jsCode": "const i=$('[A1] Entrada').first().json;const msg=String($json.error?.description||$json.error?.message||$json.error||'Error de procesamiento');const tramite=['reclamo','reserva_sum'].includes(i.intencion);return [{json:{status:'success',worker:'juez',traceId:i.traceId,error_juez:msg,data:{veredicto:tramite?'APROBADO':'ESCALAR',exactitud:1,critica:'Falla del juez: '+msg+(tramite?' · pasa a la aprobación humana del worker':''),categoria_error:tramite?'formato':'riesgo_legal_o_dinero',intento:Number(i.intento||0)}}}];"
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "CXXXXXXXXXX"
+        },
+        "text": "={{ 'Juez E8 | traceId: '+$json.traceId+' | error: '+$json.error_juez }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "838c73e2-7c6f-4a35-806c-b7e13900e536",
+      "name": "[Ce2] Avisar contingencia",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1800,
+        620
+      ],
+      "webhookId": "8089fb97-55f8-49bf-96de-7499335606db",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "slackApi": {
+          "id": "bE4RqopUN7KMGda1",
+          "name": "Slack account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "06eb7546-a67f-47ef-8541-d5654dda37cb",
+      "name": "[Ce3] Devolver contingencia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        620
+      ],
+      "parameters": {
+        "jsCode": "const j=$('[Ce1] Contingencia').first().json;return [{json:{status:j.status,worker:j.worker,traceId:j.traceId,data:j.data}}];"
+      }
+    }
+  ],
+  "connections": {
+    "[A1] Entrada": {
+      "main": [
+        [
+          {
+            "node": "[A2] Iniciar medición",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[A2] Iniciar medición": {
+      "main": [
+        [
+          {
+            "node": "[B1] Juez",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ce1] Contingencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B2] Modelo juez": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "[B1] Juez",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B3] Esquema del veredicto": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "[B1] Juez",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B1] Juez": {
+      "main": [
+        [
+          {
+            "node": "[C1] Reglas duras",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Be1] Veredicto por falla",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Be1] Veredicto por falla": {
+      "main": [
+        [
+          {
+            "node": "[Be2] Avisar error del juez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Be2] Avisar error del juez": {
+      "main": [
+        [
+          {
+            "node": "[Be3] Recuperar veredicto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Be3] Recuperar veredicto": {
+      "main": [
+        [
+          {
+            "node": "[C1] Reglas duras",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[C1] Reglas duras": {
+      "main": [
+        [
+          {
+            "node": "[D1] Registrar auditoría",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ce1] Contingencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[D1] Registrar auditoría": {
+      "main": [
+        [
+          {
+            "node": "[D2] Salida",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[De1] Avisar error de auditoría",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[De1] Avisar error de auditoría": {
+      "main": [
+        [
+          {
+            "node": "[D2] Salida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Ce1] Contingencia": {
+      "main": [
+        [
+          {
+            "node": "[Ce2] Avisar contingencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Ce2] Avisar contingencia": {
+      "main": [
+        [
+          {
+            "node": "[Ce3] Devolver contingencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 90,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "versionId": "0caccac2-a1b0-4c79-863d-c26060f54c86",
+  "activeVersionId": "0caccac2-a1b0-4c79-863d-c26060f54c86",
+  "versionCounter": 6,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

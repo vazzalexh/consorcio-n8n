@@ -1,0 +1,1111 @@
+{
+  "updatedAt": "2026-11-19T02:33:32.000Z",
+  "createdAt": "2026-11-18T17:07:53.328Z",
+  "id": "ConsAirReclM2001",
+  "name": "Consorcio Airtable M2 · reclamos",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "7182c70c-ecfd-4c5f-aa73-b38923e29c45",
+      "name": "[A1] Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "traceId"
+            },
+            {
+              "name": "evento"
+            },
+            {
+              "name": "operacion"
+            },
+            {
+              "name": "usuario"
+            },
+            {
+              "name": "unidad"
+            },
+            {
+              "name": "detalle"
+            },
+            {
+              "name": "categoria"
+            },
+            {
+              "name": "prioridad"
+            },
+            {
+              "name": "critico",
+              "type": "boolean"
+            },
+            {
+              "name": "resumen"
+            },
+            {
+              "name": "decision"
+            },
+            {
+              "name": "aprobado_por"
+            },
+            {
+              "name": "motivo"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fa572f11-4a85-43b8-9aae-103ac8a72b42",
+      "name": "[A2] Operación",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        300,
+        0
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operacion }}",
+                    "rightValue": "registrar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "registrar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operacion }}",
+                    "rightValue": "resolver",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "resolver"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      }
+    },
+    {
+      "id": "45781b32-cb7c-4ac0-99c7-244d7106e363",
+      "name": "[B1] ¿Datos completos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ ['evento','usuario','unidad','detalle'].every(k => typeof $json[k] === 'string' && $json[k].trim().length > 0) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "50dad633-d876-4c3c-80cb-16445242d49e",
+      "name": "[B2] Buscar reclamo existente",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "appXXXXXXXXXXXXXX"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "tblXXXXXXXXXXXXXX"
+        },
+        "filterByFormula": "={{ '{id_reclamo} = ' + JSON.stringify(String($('[A1] Entrada').first().json.evento ?? '')) }}",
+        "options": {}
+      },
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "N55OBGqBwWG2bMBt",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "9b6ad478-48f4-4ec5-973e-c0b79950afb2",
+      "name": "[B3] ¿Ya existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1400,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !!$json.id && !!$json.fields && $json.fields.id_reclamo === $('[A1] Entrada').first().json.evento }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "0be443b8-1774-4d8a-91b0-f06068e4f89a",
+      "name": "[B2a] Validar búsqueda",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const a=$input.all().map(i=>i.json); if(a.length===1 && Object.keys(a[0]).length===0) return [{json:{}}]; if(a.length!==1 || !a[0].id || !a[0].fields || a[0].fields.id_reclamo!==$('[A1] Entrada').first().json.evento) throw Error('Resultado de búsqueda mal formado o duplicado'); return [{json:a[0]}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "0470bace-4bbf-484e-9421-a02c26569f48",
+      "name": "[B4] Resultado existente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        -180
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json; return [{json:{status:'pending',worker:'reclamos',traceId:r.traceId,data:{id_reclamo:$json.fields.id_reclamo,critico:$json.fields.critico===true,mensaje:`Registramos tu reclamo ${$json.fields.id_reclamo}. Queda en revisión de Administración.`}}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "df404a26-20c7-4c7d-a4b5-d3c46d8d8996",
+      "name": "[B5] Crear reclamo",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1700,
+        180
+      ],
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "appXXXXXXXXXXXXXX"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "tblXXXXXXXXXXXXXX"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id_reclamo": "={{ $('[A1] Entrada').first().json.evento }}",
+            "unidad": "={{ [$('[A1] Entrada').first().json.unidad] }}",
+            "usuario": "={{ [$('[A1] Entrada').first().json.usuario] }}",
+            "mensaje_original": "={{ $('[A1] Entrada').first().json.detalle }}",
+            "categoria": "={{ $('[A1] Entrada').first().json.categoria || '' }}",
+            "resumen_ia": "={{ $('[A1] Entrada').first().json.resumen || '' }}",
+            "prioridad": "={{ ['baja','media','alta','critica'].includes($('[A1] Entrada').first().json.prioridad) ? $('[A1] Entrada').first().json.prioridad : 'media' }}",
+            "critico": "={{ $('[A1] Entrada').first().json.critico === true }}",
+            "estado": "en_revision",
+            "traceId": "={{ $('[A1] Entrada').first().json.traceId }}",
+            "fecha_recepcion": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id_reclamo",
+              "displayName": "id_reclamo",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "unidad",
+              "displayName": "unidad",
+              "type": "array",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "usuario",
+              "displayName": "usuario",
+              "type": "array",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "mensaje_original",
+              "displayName": "mensaje_original",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "categoria",
+              "displayName": "categoria",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "resumen_ia",
+              "displayName": "resumen_ia",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "prioridad",
+              "displayName": "prioridad",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "critico",
+              "displayName": "critico",
+              "type": "boolean",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "traceId",
+              "displayName": "traceId",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "fecha_recepcion",
+              "displayName": "fecha_recepcion",
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "display": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "N55OBGqBwWG2bMBt",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "3f4f07bf-752c-42f4-9bcc-f66efbc722c1",
+      "name": "[B6] ¿Es crítico?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2000,
+        180
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('[A1] Entrada').first().json.critico === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "35ae997a-1b93-462e-99d0-d5bd2d43a0a2",
+      "name": "[B7] Limpiar para Slack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json; const clean=v=>String(v??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])).replace(/[\\r\\n]+/g,' ').slice(0,600); return [{json:{texto:`🚨 RECLAMO CRÍTICO\\nUnidad: ${clean(r.unidad)}\\nCategoría: ${clean(r.categoria)}\\nResumen: ${clean(r.resumen)}\\nID: ${clean(r.evento)}\\ntraceId: ${clean(r.traceId)}`}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "a73aaf7b-ca1b-46db-b89f-a4d9ad4645d2",
+      "name": "[B8] Aviso reclamo crítico",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        2600,
+        0
+      ],
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "CXXXXXXXXXX"
+        },
+        "text": "={{ $json.texto }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "bE4RqopUN7KMGda1",
+          "name": "Slack account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "e97f2b16-a721-44bf-99b8-68ad88baf499",
+      "name": "[B9] Resultado registrar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2900,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json; return [{json:{status:'pending',worker:'reclamos',traceId:r.traceId,data:{id_reclamo:r.evento,critico:r.critico===true,mensaje:`Registramos tu reclamo ${r.evento}. Queda en revisión de Administración.`}}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "fb4483e4-1ec0-46fe-a116-dae9c1101fa0",
+      "name": "[C1] Buscar reclamo",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        -540
+      ],
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "appXXXXXXXXXXXXXX"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "tblXXXXXXXXXXXXXX"
+        },
+        "filterByFormula": "={{ '{id_reclamo} = ' + JSON.stringify(String($('[A1] Entrada').first().json.evento ?? '')) }}",
+        "options": {}
+      },
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "N55OBGqBwWG2bMBt",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "7a88c260-9929-40c5-870a-06ab675e2c2f",
+      "name": "[C2] ¿Existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        -540
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !!$json.id && !!$json.fields && $json.fields.id_reclamo === $('[A1] Entrada').first().json.evento && ['aprobado','rechazado'].includes($('[A1] Entrada').first().json.decision) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "8f13210c-3038-4561-b556-9a4024f10937",
+      "name": "[C1a] Validar búsqueda",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        950,
+        -540
+      ],
+      "parameters": {
+        "jsCode": "const a=$input.all().map(i=>i.json); if(a.length===1 && Object.keys(a[0]).length===0) return [{json:{}}]; if(a.length!==1 || !a[0].id || !a[0].fields || a[0].fields.id_reclamo!==$('[A1] Entrada').first().json.evento) throw Error('Resultado de búsqueda mal formado o duplicado'); return [{json:a[0]}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "362cae0c-af7b-443f-8216-abb7ec3764f9",
+      "name": "[C3] Actualizar reclamo",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1400,
+        -540
+      ],
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "appXXXXXXXXXXXXXX"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "tblXXXXXXXXXXXXXX"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "estado": "={{ $('[A1] Entrada').first().json.decision === 'aprobado' ? 'abierto' : 'rechazado' }}",
+            "aprobado_por": "={{ $('[A1] Entrada').first().json.aprobado_por || '' }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "aprobado_por",
+              "displayName": "aprobado_por",
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "display": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "N55OBGqBwWG2bMBt",
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "onError": "continueErrorOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "fcd5daed-ef4e-413b-a002-5704a1d47100",
+      "name": "[C4] Resultado resolver",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        -540
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json; const mensaje=r.decision==='aprobado'?`Tu reclamo ${r.evento} fue aprobado y Administración le va a dar seguimiento.`:`Tu reclamo ${r.evento} no fue aprobado. Motivo: ${r.motivo || 'Administración te va a contactar'}`; return [{json:{status:'success',worker:'reclamos',traceId:r.traceId,data:{id_reclamo:r.evento,mensaje}}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "e7bc4780-0c3a-4f1b-8e15-2d1c1128d17f",
+      "name": "[Ee1] Armar error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        650
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json; const e=typeof $json.error==='string'?$json.error:($json.error?.description ?? $json.error?.message ?? $json.message ?? 'Entrada inválida o dato no encontrado'); return [{json:{traceId:r.traceId,bloque:'reclamos',nodo:$prevNode.name,mensaje:String(e)}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "cdb00f2c-4895-45c9-9a56-ac76e6d36ba0",
+      "name": "[Ee2] Avisar errores",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1100,
+        650
+      ],
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "CXXXXXXXXXX"
+        },
+        "text": "=Error worker reclamos | traceId: {{ $json.traceId }} | nodo: {{ $json.nodo }} | {{ $json.mensaje }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "credentials": {
+        "slackApi": {
+          "id": "bE4RqopUN7KMGda1",
+          "name": "Slack account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "id": "2fbfd031-4c66-4830-a863-c5927c4e01dc",
+      "name": "[Ee3] Contingencia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        650
+      ],
+      "parameters": {
+        "jsCode": "const r=$('[A1] Entrada').first().json; return [{json:{status:'error',worker:'reclamos',traceId:r.traceId,data:{mensaje:'No pude registrar tu reclamo. Ya avisamos a Administración.'}}}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "43a93da0-6ac3-4641-a35a-ada4d7a40bfd",
+      "name": "Nota Worker Reclamos · Entregable 2 · Función 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        -1000
+      ],
+      "parameters": {
+        "content": "## Worker Reclamos · Entregable 2 · Función 1\nRegistro y resolución de reclamos.",
+        "height": 180,
+        "width": 700,
+        "color": 7
+      }
+    },
+    {
+      "id": "c383c966-d991-40f7-8ad7-aefce410489b",
+      "name": "Nota [A] Entrada",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        -140
+      ],
+      "parameters": {
+        "content": "## [A] Entrada\nRecibe el contrato y deriva por operación.",
+        "height": 330,
+        "width": 650,
+        "color": 1
+      }
+    },
+    {
+      "id": "f1ac8ef9-b934-435c-bc3b-8269ea9b9149",
+      "name": "Nota [B] Registrar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        700,
+        -270
+      ],
+      "parameters": {
+        "content": "## [B] Registrar\nValida, evita duplicados y registra en revisión. Avisa los críticos.",
+        "height": 680,
+        "width": 2500,
+        "color": 5
+      }
+    },
+    {
+      "id": "1b26ff4e-3a8c-4d00-9fba-8c10c30c06ff",
+      "name": "Nota [C] Resolver",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        700,
+        -800
+      ],
+      "parameters": {
+        "content": "## [C] Resolver\nBusca el reclamo y aplica la decisión de Administración.",
+        "height": 370,
+        "width": 1200,
+        "color": 5
+      }
+    },
+    {
+      "id": "f21e32b5-eeb9-475b-9af7-0552928f7dcb",
+      "name": "Nota [E] Errores",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        700,
+        500
+      ],
+      "parameters": {
+        "content": "## [E] Errores\nNotifica a Administración y devuelve contingencia.",
+        "height": 350,
+        "width": 1100,
+        "color": 6
+      }
+    }
+  ],
+  "connections": {
+    "[A1] Entrada": {
+      "main": [
+        [
+          {
+            "node": "[A2] Operación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[A2] Operación": {
+      "main": [
+        [
+          {
+            "node": "[B1] ¿Datos completos?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[C1] Buscar reclamo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B1] ¿Datos completos?": {
+      "main": [
+        [
+          {
+            "node": "[B2] Buscar reclamo existente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B2] Buscar reclamo existente": {
+      "main": [
+        [
+          {
+            "node": "[B2a] Validar búsqueda",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B3] ¿Ya existe?": {
+      "main": [
+        [
+          {
+            "node": "[B4] Resultado existente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[B5] Crear reclamo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B5] Crear reclamo": {
+      "main": [
+        [
+          {
+            "node": "[B6] ¿Es crítico?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B6] ¿Es crítico?": {
+      "main": [
+        [
+          {
+            "node": "[B7] Limpiar para Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[B9] Resultado registrar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B7] Limpiar para Slack": {
+      "main": [
+        [
+          {
+            "node": "[B8] Aviso reclamo crítico",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B8] Aviso reclamo crítico": {
+      "main": [
+        [
+          {
+            "node": "[B9] Resultado registrar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[C1] Buscar reclamo": {
+      "main": [
+        [
+          {
+            "node": "[C1a] Validar búsqueda",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[C2] ¿Existe?": {
+      "main": [
+        [
+          {
+            "node": "[C3] Actualizar reclamo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[C3] Actualizar reclamo": {
+      "main": [
+        [
+          {
+            "node": "[C4] Resultado resolver",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Ee1] Armar error": {
+      "main": [
+        [
+          {
+            "node": "[Ee2] Avisar errores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[Ee2] Avisar errores": {
+      "main": [
+        [
+          {
+            "node": "[Ee3] Contingencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B2a] Validar búsqueda": {
+      "main": [
+        [
+          {
+            "node": "[B3] ¿Ya existe?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B4] Resultado existente": {
+      "main": [
+        [],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[B9] Resultado registrar": {
+      "main": [
+        [],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[C1a] Validar búsqueda": {
+      "main": [
+        [
+          {
+            "node": "[C2] ¿Existe?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[C4] Resultado resolver": {
+      "main": [
+        [],
+        [
+          {
+            "node": "[Ee1] Armar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "executionTimeout": 60,
+    "binaryMode": "separate"
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "versionId": "78a7b9b0-4a72-46ad-aabd-92ed64c5507b",
+  "activeVersionId": "78a7b9b0-4a72-46ad-aabd-92ed64c5507b",
+  "versionCounter": 5,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}
