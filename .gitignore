@@ -1,0 +1,13 @@
+*
+!/.gitignore
+!/README.md
+!/entregable_04/
+/entregable_04/*
+!/entregable_04/README_E4.md
+!/entregable_04/checkpoint4_Alexis_Vazquez.json
+!/entregable_04/capturas/
+/entregable_04/capturas/*
+!/entregable_04/capturas/*.png
+*.env
+backups/
+revision/
