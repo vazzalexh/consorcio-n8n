@@ -4,19 +4,19 @@ Chatbot de administración de un consorcio construido en n8n, proyecto integrado
 
 ## Entregables
 
-| # | Tema | Carpeta | Estado |
-|---|---|---|---|
-| 1 | Agente base | [entregable_01](entregable_01/) | Terminado |
-| 2 | Manager, workers y aprobación humana | [entregable_02](entregable_02/) | Terminado |
-| 3 | Memoria en Airtable y resumen | [entregable_03](entregable_03/) | Terminado |
-| 4 | Casilla de Administración (Gmail) | [entregable_04](entregable_04/) | Terminado |
-| 5 | RAG con LlamaCloud | [entregable_05](entregable_05/) | Terminado |
-| 6 | Voz: Whisper + ElevenLabs | [entregable_06](entregable_06/) | Terminado |
-| 7 | Línea de base y KPIs | [entregable_07](entregable_07/) | Terminado |
-| 8 | Supervisor AI-as-a-Judge y prueba A/B | [entregable_08](entregable_08/) | Terminado |
-| 9 | Trazabilidad y log estructurado | [entregable_09](entregable_09/) | En curso |
-| 10 | Brochure | [entregable_10](entregable_10/) | Pendiente |
-| Final | Proyecto integrador | [final](final/) | Pendiente |
+| # | Tema | Carpeta |
+|---|---|---|
+| 1 | Agente base | [entregable_01](entregable_01/) |
+| 2 | Manager, workers y aprobación humana | [entregable_02](entregable_02/) |
+| 3 | Memoria en Airtable y resumen | [entregable_03](entregable_03/) |
+| 4 | Casilla de Administración (Gmail) | [entregable_04](entregable_04/) |
+| 5 | RAG con LlamaCloud | [entregable_05](entregable_05/) |
+| 6 | Voz: Whisper + ElevenLabs | [entregable_06](entregable_06/) |
+| 7 | Línea de base y KPIs | [entregable_07](entregable_07/) |
+| 8 | Supervisor AI-as-a-Judge y prueba A/B | [entregable_08](entregable_08/) |
+| 9 | Trazabilidad y log estructurado | [entregable_09](entregable_09/) |
+| 10 | Brochure | [entregable_10](entregable_10/) |
+| Final | Proyecto integrador | [final](final/) |
 
 ## Estructura de cada carpeta
 
