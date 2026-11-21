@@ -76,9 +76,7 @@ Las escrituras tienen Retry On Fail y los nodos principales de servicio, agente 
 - ![Slack conectado](capturas/cred_slack.png) — Slack con “Account connected”.
 - ![Airtable conectado](capturas/cred_airtable.png) — Airtable con “Account connected”.
 - ![Ejecución 102](capturas/ejecucion_102.png) — Corte de respuesta automática.
-- ![Ejecución 106](capturas/ejecucion_106.png) — Actualización del contacto sin duplicar.
-- ![Borrador Gmail](capturas/borrador_gmail.png) — Borrador creado en Gmail.
-- ![Aviso Slack](capturas/slack_aviso.png) — Aviso al equipo en Slack.
+- ![Ejecución 106](capturas/ejecucion_106.png) — Actualización del contacto sin duplicar: clasificación de la IA y recorrido hasta el borrador y el aviso en Slack.
 
 ## Workflows
 
