@@ -28,4 +28,22 @@ El agente responde las consultas de convivencia solo con el reglamento interno y
 
 ## Capturas
 
-- ![manager bloques C D rag](capturas/manager_bloques_C_D_rag.png) — manager bloques C D rag.
+**Índice en LlamaCloud:** estado HEALTHY, los dos documentos en estado Searchable y vector store activo.
+
+![Índice de LlamaCloud](capturas/01_llamacloud_indice.png)
+
+**Agente con la herramienta RAG:** `[D1]` con el modelo, la memoria y `RAG_reglamento` conectados por las conexiones laterales; abajo, la nota con Top-K y Min Score.
+
+![Agente y herramienta RAG](capturas/manager_bloques_C_D_rag.png)
+
+**Nodo `[B1] Recuperar fragmentos`:** POST al endpoint de retrieval de LlamaCloud con la credencial Header Auth.
+
+![Nodo B1](capturas/02_nodo_B1_recuperar_fragmentos.png)
+
+**Ejecución 149 (perro):** recorrido en verde desde la memoria hasta el agente, con la llamada a `RAG_reglamento` en el panel de logs.
+
+![Ejecución 149](capturas/03_ejecucion_149_memoria_y_rag.png)
+
+**Ejecución 147 (expensa de diciembre, sin cobertura):** la respuesta empieza con "No sé." y ofrece derivar.
+
+![Ejecución 147](capturas/04_ejecucion_147_no_se.png)

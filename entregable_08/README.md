@@ -41,4 +41,22 @@ Recomendación: agente con 20b y juez con 120b. El 20b falla de forma segura ("N
 
 ## Capturas
 
-- Pendientes.
+**Bloque [S] Supervisor en el Manager:** `[S0]` ¿Emergencia?, llamada al juez, Switch de veredicto con las tres salidas, control de intentos y pedido de corrección.
+
+![Bloque Supervisor](capturas/01_manager_bloque_S_supervisor.png)
+
+**Ejecución 206, ruta CORREGIR:** el juez pidió reescribir y el agente respondió de nuevo (intento = 1).
+
+![Ejecución 206](capturas/02_ejecucion_206_corregir.png)
+
+**Ruta ESCALAR:** pedido de aprobación en Slack con la consulta, la respuesta propuesta, la exactitud, la categoría y la crítica del juez.
+
+![Escalamiento en Slack](capturas/03_slack_escalamiento.png)
+
+**Resumen automático del QA A/B (corrida 226)** y, debajo, el aviso inmediato de una emergencia de gas que no pasa por el juez (ejecución 242).
+
+![Resumen del QA y emergencia](capturas/04_slack_resumen_qa_y_emergencia.png)
+
+**Tabla Auditoria_QA:** un registro por veredicto, con origen, arquitectura, pregunta, respuesta y exactitud. El CSV completo está en [Auditoria_QA.csv](Auditoria_QA.csv).
+
+![Auditoria_QA](capturas/05_airtable_auditoria_qa.png)

@@ -25,5 +25,34 @@ El agente pasa a ser un **Manager** que clasifica la intención del vecino y del
 
 ## Capturas
 
-- ![captura manager 02e](capturas/captura_manager_02e.png) — captura manager 02e.
-- ![manager bloques F H](capturas/manager_bloques_F_H.png) — manager bloques F H.
+**Lienzo completo del Manager**, con los bloques ordenados por proceso:
+
+![Lienzo del Manager](capturas/01_manager_lienzo.png)
+
+**Bloque [F] Delegación:** el Switch `[F1] Intención` y los Execute Workflow `[F3] Delegar reclamos` y `[F6] Delegar reservas`.
+
+![Bloque de delegación](capturas/02_manager_bloque_F_delegacion.png)
+
+**Worker de reclamos:** entrada [A], registrar [B], resolver [C] y carril de errores [E].
+
+![Worker reclamos](capturas/03_worker_reclamos.png)
+
+**Worker de reservas:** validación de formato, disponibilidad, operación, registro y errores.
+
+![Worker reservas](capturas/04_worker_reservas.png)
+
+**Nodo `[F3] Delegar reclamos`:** solo los campos necesarios y Wait For Sub-Workflow Completion activado.
+
+![Nodo F3](capturas/05_nodo_F3_delegar_reclamos.png)
+
+**Bloques [F] y [H]:** aprobación humana en Slack sin vencimiento y nueva llamada al worker según la decisión.
+
+![Delegación y aprobación humana](capturas/manager_bloques_F_H.png)
+
+**Ejecución 71:** terminó con éxito después de 35 minutos y 51 segundos esperando la aprobación.
+
+![Ejecución 71](capturas/06_ejecucion_71.png)
+
+**Versión del Manager al cierre de la etapa 02.**
+
+![Manager al cierre de la etapa 02](capturas/captura_manager_02e.png)
