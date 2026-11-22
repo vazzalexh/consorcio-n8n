@@ -1,0 +1,297 @@
+{
+  "updatedAt": "2026-11-21T23:12:21.000Z",
+  "createdAt": "2026-11-21T18:47:10.278Z",
+  "name": "Consorcio · Util · Log",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "00307c42-8fc5-486b-a150-0e8e1b2a2307",
+      "name": "[A0] Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "traceId"
+            },
+            {
+              "name": "workflow"
+            },
+            {
+              "name": "nodeName"
+            },
+            {
+              "name": "evento_log"
+            },
+            {
+              "name": "toolOutput"
+            },
+            {
+              "name": "systemPromptSnapshot"
+            },
+            {
+              "name": "confidenceScore"
+            },
+            {
+              "name": "veredicto"
+            },
+            {
+              "name": "resultado"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cc17236e-234f-4241-b276-94416685c277",
+      "name": "[A1] Armar registro",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const j=$json;\nconst clean=x=>{\n let s=String(x??'').replace(/[\\uE000\\uE001]/g,'');const saved=[];\n const protect=(re)=>{s=s.replace(re,v=>{const i=saved.push(v)-1;return '\\uE000'+i+'\\uE001'})};\n protect(/(?<![A-Za-z0-9_])\\d+-\\d+_\\d+(?![A-Za-z0-9_])/g);\n protect(/(?<![\\d.])\\d+\\.\\d+(?![\\d.])/g);\n s=s.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi,'[dato]').replace(/(?:\\+?\\d[\\d\\s().-]{6,}\\d)/g,'[dato]').replace(/\\b\\d{1,3}(?:\\.\\d{3}){2}\\b/g,'[dato]');\n return s.replace(/\\uE000(\\d+)\\uE001/g,(_,i)=>saved[Number(i)]??'').slice(0,500);\n};\nconst raw=j.confidenceScore; const n=raw===''||raw===null||raw===undefined?null:Number(raw);\nconst entry={traceId:String(j.traceId||('sin-traceId-'+$execution.id)),timestamp:$now.setZone('America/Argentina/Buenos_Aires').toISO(),workflow:String(j.workflow||''),nodeName:String(j.nodeName||''),evento_log:String(j.evento_log||''),toolOutput:clean(typeof j.toolOutput==='string'?j.toolOutput:JSON.stringify(j.toolOutput??'')),systemPromptSnapshot:String(j.systemPromptSnapshot||'n/a'),confidenceScore:Number.isFinite(n)?n:null,veredicto:['APROBADO','CORREGIR','ESCALAR'].includes(j.veredicto)?j.veredicto:'',resultado:['success','error','pending'].includes(j.resultado)?j.resultado:'error'};\nconst fields={...entry,json:JSON.stringify(entry),canal_origen:'Telegram'};\nif(fields.confidenceScore===null)delete fields.confidenceScore;\nif(!fields.veredicto)delete fields.veredicto;\nreturn [{json:fields}];"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "appXXXXXXXXXXXXXX"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "tblXXXXXXXXXXXXXX"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "traceId",
+              "displayName": "traceId",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "type": "dateTime",
+              "display": true
+            },
+            {
+              "id": "workflow",
+              "displayName": "workflow",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "nodeName",
+              "displayName": "nodeName",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "evento_log",
+              "displayName": "evento_log",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "toolOutput",
+              "displayName": "toolOutput",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "systemPromptSnapshot",
+              "displayName": "systemPromptSnapshot",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "confidenceScore",
+              "displayName": "confidenceScore",
+              "type": "number",
+              "display": true
+            },
+            {
+              "id": "veredicto",
+              "displayName": "veredicto",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "json",
+              "displayName": "json",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "canal_origen",
+              "displayName": "canal_origen",
+              "type": "string",
+              "display": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "14135ea0-682b-491b-8695-95b1cb7fe56f",
+      "name": "[A2] Escribir log",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        600,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": null,
+          "name": "Airtable Personal Access Token account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "CXXXXXXXXXX"
+        },
+        "text": "={{ 'Error al registrar log\\ntraceId: '+($('[A0] Entrada').first().json.traceId || 'sin-traceId-'+$execution.id)+'\\n'+String($json.error?.message||$json.error||$json.message||'Error de escritura').slice(0,250) }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "19eb3671-077d-462f-9c88-5189a89568b4",
+      "name": "[Ae1] Avisar error de log",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        900,
+        320
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "slackApi": {
+          "id": null,
+          "name": "Slack account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "b68b7735-1795-4188-947f-71d1b4f5af2e",
+      "name": "Nota título",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -500
+      ],
+      "parameters": {
+        "content": "# Consorcio · Util · Log · E9",
+        "height": 150,
+        "width": 500,
+        "color": 6
+      }
+    },
+    {
+      "id": "152092c0-a875-4ff7-bf2d-51449c34817b",
+      "name": "Nota [A]",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -220
+      ],
+      "parameters": {
+        "content": "## [A] Log estructurado\nNormaliza, oculta datos personales y guarda JSON.\nErrores de escritura se informan a Administración.",
+        "height": 720,
+        "width": 1350,
+        "color": 6
+      }
+    }
+  ],
+  "connections": {
+    "[A0] Entrada": {
+      "main": [
+        [
+          {
+            "node": "[A1] Armar registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[A1] Armar registro": {
+      "main": [
+        [
+          {
+            "node": "[A2] Escribir log",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[Ae1] Avisar error de log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[A2] Escribir log": {
+      "main": [
+        [],
+        [
+          {
+            "node": "[Ae1] Avisar error de log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 30,
+    "timezone": "America/Argentina/Buenos_Aires",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none"
+  },
+  "meta": null,
+  "nodeGroups": [],
+  "tags": []
+}
