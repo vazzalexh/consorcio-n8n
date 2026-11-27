@@ -1,11 +1,8 @@
 # Entregable 10 · Brochure
 
-Pendiente (vence el 25/11).
+Brochure comercial de ConsorcioIA: [PDF](PreEntrega_Modulo10_Alexis_Vazquez.pdf).
 
 ## Workflows
 
 - No hay archivos de workflow propios en esta carpeta.
 
-## Capturas
-
-- Pendientes.

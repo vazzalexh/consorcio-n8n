@@ -15,7 +15,7 @@ Chatbot de administración de un consorcio construido en n8n, proyecto integrado
 | 7 | Línea de base y KPIs | [entregable_07](entregable_07/) |
 | 8 | Supervisor AI-as-a-Judge y prueba A/B | [entregable_08](entregable_08/) |
 | 9 | Gobernanza, costos y trazabilidad (traceId) | [entregable_09](entregable_09/) |
-| 10 | Brochure | [entregable_10](entregable_10/) |
+| 10 | Brochure comercial de ConsorcioIA (PDF) | [entregable_10](entregable_10/) |
 | Final | Proyecto integrador | [final](final/) |
 
 ## Estructura de cada carpeta
