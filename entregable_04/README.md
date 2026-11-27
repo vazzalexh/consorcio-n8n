@@ -1,5 +1,20 @@
 # Entregable 4 · Casilla de Administración
 
+## Cumplimiento de la consigna
+
+| Paso de la consigna | Dónde está | Evidencia |
+|---|---|---|
+| 3 conectores reales: CRM, correo y canal del equipo | Airtable (`[E1]`–`[E5]`), Gmail (`[A1]`, `[F1]`), Slack (`[G2]`, `[Xe2]`) | `capturas/credenciales_lista.png` |
+| Autenticación OAuth2 en verde | Credenciales Airtable OAuth2, Gmail y Slack | `capturas/cred_airtable.png`, `cred_gmail.png`, `cred_slack.png` |
+| Mínimo privilegio | Gmail limitado a `gmail.readonly` + `gmail.compose` (leer y crear borradores) | Sección "Credenciales OAuth2" |
+| ① IF inmediatamente después del trigger | `[B1] ① ¿Es respuesta automática?` → `[B2] Stop` | `capturas/ejecucion_102.png` |
+| Filtro de auto-respuestas | Asunto con Auto-reply, Out of office, Undeliverable o remitente no-reply/noreply | Ejecución 102 |
+| ② Look up antes del Create (evita el 409) | `[E1]`/`[E3]` buscan → `[E2]`/`[E4]` actualizan o `[E5]` crea | `capturas/ejecucion_106.png` (contacto existente, sin duplicar) |
+| ③ Create Draft (HITL) | `[F1] ③ Crear borrador de respuesta`: crea el borrador, nunca envía | Ejecuciones 105, 106 y 112 |
+| ④ Set de limpieza del payload | `[D1] ④ Limpiar payload` (y `[D2]` valida el email) y `[G1] ④ Limpiar para Slack` | Ejecución 106 |
+| Test de regresión | Ejecuciones 102, 105, 106 y 112 | Tabla "Pruebas" |
+| JSON importable | `checkpoint4_Alexis_Vazquez.json` | Sección "Cómo importarlo" |
+
 ## Qué hace
 
 La Casilla consulta el Gmail de Administración cada minuto y descarta respuestas automáticas para evitar bucles. Clasifica el correo con IA y busca al remitente en el CRM de Airtable. Actualiza el registro existente o crea un contacto externo, prepara un borrador de respuesta en Gmail y avisa al equipo por Slack. El correo nunca se envía automáticamente.
